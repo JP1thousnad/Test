@@ -1,5 +1,8 @@
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
 import type { StockInfo, IncomeStatementData, EarningsHistoryEntry, EarningsMetrics, GuidanceRange, KeyHighlight, PeerData } from "@shared/schema";
+
+// Initialize YahooFinance instance
+const yahooFinance = new YahooFinance();
 
 export class StockDataService {
   async getStockInfo(ticker: string): Promise<StockInfo> {
