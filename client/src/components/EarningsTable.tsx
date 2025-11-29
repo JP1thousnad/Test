@@ -16,7 +16,7 @@ interface EarningsRecord {
   eps: number;
   epsEstimate: number | null;
   beat: boolean | null;
-  surprise?: number;
+  surprise?: number | null;
 }
 
 interface EarningsTableProps {
@@ -70,14 +70,14 @@ export function EarningsTable({ data }: EarningsTableProps) {
                   </TableCell>
                   <TableCell
                     className={`text-right font-mono ${
-                      record.surprise && record.surprise > 0
+                      record.surprise != null && record.surprise > 0
                         ? "text-emerald-600 dark:text-emerald-400"
-                        : record.surprise && record.surprise < 0
+                        : record.surprise != null && record.surprise < 0
                         ? "text-red-600 dark:text-red-400"
                         : ""
                     }`}
                   >
-                    {record.surprise !== undefined
+                    {record.surprise != null
                       ? `${record.surprise >= 0 ? "+" : ""}${record.surprise.toFixed(1)}%`
                       : "-"}
                   </TableCell>

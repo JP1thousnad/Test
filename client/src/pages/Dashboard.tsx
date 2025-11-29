@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TickerSearch } from "@/components/TickerSearch";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -15,259 +16,96 @@ import { GuidanceCard } from "@/components/GuidanceCard";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { useToast } from "@/hooks/use-toast";
-
-// todo: remove mock functionality - mock data for prototype
-const mockCompanyData = {
-  AAPL: {
-    ticker: "AAPL",
-    companyName: "Apple Inc.",
-    sector: "Technology",
-    industry: "Consumer Electronics",
-    currentPrice: 185.42,
-    priceChange: 2.35,
-    priceChangePercent: 1.28,
-    marketCap: 2.89e12,
-    metrics: {
-      revenue: { value: "94.93B", change: 8.1 },
-      eps: { value: "1.53", change: 4.2, beat: true },
-      netMargin: { value: "25.3", change: 1.8 },
-      grossMargin: { value: "46.3", change: 1.5 },
-    },
-    margins: { gross: 46.3, operating: 30.2, net: 25.3 },
-    sentiment: { score: 0.45, label: "Bullish" as const, positive: 0.58, negative: 0.12, neutral: 0.30 },
-    highlights: [
-      { type: "beat" as const, text: "EPS beat analyst estimates by 4.2%" },
-      { type: "beat" as const, text: "Revenue exceeded Wall Street expectations" },
-      { type: "growth" as const, text: "Strong 8.1% YoY revenue growth driven by Services" },
-      { type: "margin" as const, text: "Net margin improved to 25.3%, up 180 bps" },
-      { type: "info" as const, text: "Management expressed bullish outlook for AI initiatives" },
-    ],
-    revenueHistory: [
-      { period: "Q1 2024", revenue: 85.5e9, netIncome: 21.5e9 },
-      { period: "Q2 2024", revenue: 89.2e9, netIncome: 23.1e9 },
-      { period: "Q3 2024", revenue: 91.8e9, netIncome: 24.0e9 },
-      { period: "Q4 2024", revenue: 94.9e9, netIncome: 24.2e9 },
-    ],
-    earningsHistory: [
-      { period: "Q4 2024", reportDate: "Jan 30, 2025", revenue: 94.9e9, eps: 1.53, epsEstimate: 1.47, beat: true, surprise: 4.1 },
-      { period: "Q3 2024", reportDate: "Oct 31, 2024", revenue: 91.8e9, eps: 1.42, epsEstimate: 1.40, beat: true, surprise: 1.4 },
-      { period: "Q2 2024", reportDate: "Aug 1, 2024", revenue: 89.2e9, eps: 1.38, epsEstimate: 1.41, beat: false, surprise: -2.1 },
-      { period: "Q1 2024", reportDate: "May 2, 2024", revenue: 85.5e9, eps: 1.29, epsEstimate: 1.25, beat: true, surprise: 3.2 },
-    ],
-    guidance: [
-      { label: "Revenue", low: 96, high: 100, unit: "B", previous: 94.9 },
-      { label: "EPS", low: 1.55, high: 1.62, unit: "$", previous: 1.53 },
-      { label: "Gross Margin", low: 45.5, high: 47.0, unit: "%" },
-    ],
-    transcriptAnalysis: {
-      transcript: "We delivered exceptional results this quarter with record Services revenue of $23.1 billion. iPhone revenue grew 8% YoY driven by strong demand for iPhone 15 Pro models. Our installed base continues to grow, now exceeding 2 billion active devices worldwide.",
-      keyPhrases: [
-        { phrase: "revenue growth", count: 12 },
-        { phrase: "services revenue", count: 8 },
-        { phrase: "iPhone demand", count: 6 },
-        { phrase: "installed base", count: 5 },
-        { phrase: "margin expansion", count: 4 },
-      ],
-      positiveSignals: [
-        "Record Services revenue of $23.1B",
-        "iPhone revenue grew 8% YoY",
-        "Installed base exceeded 2 billion devices",
-        "Strong gross margin of 46.3%",
-      ],
-      riskFactors: [
-        "China market uncertainty mentioned",
-        "FX headwinds expected next quarter",
-        "Regulatory concerns in EU discussed",
-      ],
-    },
-  },
-  MSFT: {
-    ticker: "MSFT",
-    companyName: "Microsoft Corporation",
-    sector: "Technology",
-    industry: "Software - Infrastructure",
-    currentPrice: 378.91,
-    priceChange: 5.12,
-    priceChangePercent: 1.37,
-    marketCap: 2.81e12,
-    metrics: {
-      revenue: { value: "56.52B", change: 12.4 },
-      eps: { value: "2.93", change: 6.8, beat: true },
-      netMargin: { value: "36.5", change: 2.1 },
-      grossMargin: { value: "69.8", change: 0.8 },
-    },
-    margins: { gross: 69.8, operating: 44.1, net: 36.5 },
-    sentiment: { score: 0.62, label: "Bullish" as const, positive: 0.65, negative: 0.08, neutral: 0.27 },
-    highlights: [
-      { type: "beat" as const, text: "EPS beat consensus by 6.8%" },
-      { type: "growth" as const, text: "Azure revenue grew 29% YoY" },
-      { type: "growth" as const, text: "AI services driving cloud momentum" },
-      { type: "margin" as const, text: "Industry-leading 36.5% net margin" },
-      { type: "info" as const, text: "Copilot adoption accelerating across enterprise" },
-    ],
-    revenueHistory: [
-      { period: "Q1 FY24", revenue: 52.9e9, netIncome: 19.2e9 },
-      { period: "Q2 FY24", revenue: 54.7e9, netIncome: 20.1e9 },
-      { period: "Q3 FY24", revenue: 55.8e9, netIncome: 20.5e9 },
-      { period: "Q4 FY24", revenue: 56.5e9, netIncome: 20.6e9 },
-    ],
-    earningsHistory: [
-      { period: "Q4 FY24", reportDate: "Jan 28, 2025", revenue: 56.5e9, eps: 2.93, epsEstimate: 2.75, beat: true, surprise: 6.5 },
-      { period: "Q3 FY24", reportDate: "Oct 24, 2024", revenue: 55.8e9, eps: 2.81, epsEstimate: 2.70, beat: true, surprise: 4.1 },
-      { period: "Q2 FY24", reportDate: "Jul 30, 2024", revenue: 54.7e9, eps: 2.69, epsEstimate: 2.62, beat: true, surprise: 2.7 },
-      { period: "Q1 FY24", reportDate: "Apr 25, 2024", revenue: 52.9e9, eps: 2.55, epsEstimate: 2.48, beat: true, surprise: 2.8 },
-    ],
-    guidance: [
-      { label: "Revenue", low: 58, high: 60, unit: "B", previous: 56.5 },
-      { label: "EPS", low: 2.98, high: 3.08, unit: "$", previous: 2.93 },
-      { label: "Azure Growth", low: 26, high: 28, unit: "%" },
-    ],
-    transcriptAnalysis: {
-      transcript: "Azure and other cloud services revenue grew 29% driven by AI workloads. Microsoft 365 Commercial cloud revenue increased 15%. Our Copilot products are seeing strong enterprise adoption with over 400 million monthly active users.",
-      keyPhrases: [
-        { phrase: "Azure growth", count: 15 },
-        { phrase: "AI workloads", count: 10 },
-        { phrase: "cloud revenue", count: 9 },
-        { phrase: "Copilot adoption", count: 7 },
-        { phrase: "enterprise customers", count: 5 },
-      ],
-      positiveSignals: [
-        "Azure revenue grew 29% YoY",
-        "Copilot has 400M monthly active users",
-        "Commercial cloud surpassed $143B ARR",
-        "Gaming revenue up 61% including Activision",
-      ],
-      riskFactors: [
-        "OpenAI partnership costs mentioned",
-        "Increased competition in cloud market",
-        "EU regulatory scrutiny ongoing",
-      ],
-    },
-  },
-  NVDA: {
-    ticker: "NVDA",
-    companyName: "NVIDIA Corporation",
-    sector: "Technology",
-    industry: "Semiconductors",
-    currentPrice: 875.28,
-    priceChange: 18.42,
-    priceChangePercent: 2.15,
-    marketCap: 2.16e12,
-    metrics: {
-      revenue: { value: "22.10B", change: 122.0 },
-      eps: { value: "5.16", change: 168.0, beat: true },
-      netMargin: { value: "55.6", change: 18.2 },
-      grossMargin: { value: "72.7", change: 8.4 },
-    },
-    margins: { gross: 72.7, operating: 58.8, net: 55.6 },
-    sentiment: { score: 0.78, label: "Bullish" as const, positive: 0.72, negative: 0.05, neutral: 0.23 },
-    highlights: [
-      { type: "beat" as const, text: "Massive EPS beat of 168% YoY" },
-      { type: "growth" as const, text: "Data Center revenue up 409% YoY" },
-      { type: "growth" as const, text: "AI demand driving unprecedented growth" },
-      { type: "margin" as const, text: "Record 72.7% gross margin" },
-      { type: "info" as const, text: "Blackwell architecture ramp beginning Q1" },
-    ],
-    revenueHistory: [
-      { period: "Q1 FY24", revenue: 7.2e9, netIncome: 2.0e9 },
-      { period: "Q2 FY24", revenue: 13.5e9, netIncome: 6.1e9 },
-      { period: "Q3 FY24", revenue: 18.1e9, netIncome: 9.2e9 },
-      { period: "Q4 FY24", revenue: 22.1e9, netIncome: 12.3e9 },
-    ],
-    earningsHistory: [
-      { period: "Q4 FY24", reportDate: "Feb 21, 2025", revenue: 22.1e9, eps: 5.16, epsEstimate: 4.60, beat: true, surprise: 12.2 },
-      { period: "Q3 FY24", reportDate: "Nov 21, 2024", revenue: 18.1e9, eps: 4.02, epsEstimate: 3.36, beat: true, surprise: 19.6 },
-      { period: "Q2 FY24", reportDate: "Aug 23, 2024", revenue: 13.5e9, eps: 2.70, epsEstimate: 2.07, beat: true, surprise: 30.4 },
-      { period: "Q1 FY24", reportDate: "May 24, 2024", revenue: 7.2e9, eps: 1.09, epsEstimate: 0.92, beat: true, surprise: 18.5 },
-    ],
-    guidance: [
-      { label: "Revenue", low: 24, high: 25, unit: "B", previous: 22.1 },
-      { label: "Gross Margin", low: 71, high: 74, unit: "%", previous: 72.7 },
-    ],
-    transcriptAnalysis: {
-      transcript: "Data Center revenue was a record $18.4 billion, up 409% from a year ago. We are seeing incredible demand for our Hopper architecture. Blackwell production is ramping and we expect strong demand throughout the year.",
-      keyPhrases: [
-        { phrase: "data center", count: 22 },
-        { phrase: "AI demand", count: 18 },
-        { phrase: "Hopper architecture", count: 12 },
-        { phrase: "Blackwell", count: 10 },
-        { phrase: "supply constraints", count: 6 },
-      ],
-      positiveSignals: [
-        "Data Center revenue up 409% YoY",
-        "Record gross margin of 72.7%",
-        "Blackwell architecture ramping",
-        "Strong demand visibility into 2025",
-      ],
-      riskFactors: [
-        "Supply constraints mentioned",
-        "China export restrictions impact",
-        "Concentration in few large customers",
-      ],
-    },
-  },
-};
-
-// todo: remove mock functionality - mock peer data
-const mockPeerData = {
-  AAPL: [
-    { ticker: "AAPL", name: "Apple Inc.", marketCap: 2.89e12, pe: 29.5, revenue: 383e9, netMargin: 25.3, growth: 8.1 },
-    { ticker: "MSFT", name: "Microsoft Corp.", marketCap: 2.81e12, pe: 35.2, revenue: 211e9, netMargin: 36.5, growth: 12.4 },
-    { ticker: "GOOGL", name: "Alphabet Inc.", marketCap: 1.82e12, pe: 24.8, revenue: 307e9, netMargin: 23.8, growth: 9.2 },
-  ],
-  MSFT: [
-    { ticker: "MSFT", name: "Microsoft Corp.", marketCap: 2.81e12, pe: 35.2, revenue: 211e9, netMargin: 36.5, growth: 12.4 },
-    { ticker: "AAPL", name: "Apple Inc.", marketCap: 2.89e12, pe: 29.5, revenue: 383e9, netMargin: 25.3, growth: 8.1 },
-    { ticker: "AMZN", name: "Amazon.com Inc.", marketCap: 1.85e12, pe: 42.1, revenue: 514e9, netMargin: 6.2, growth: 11.8 },
-  ],
-  NVDA: [
-    { ticker: "NVDA", name: "NVIDIA Corp.", marketCap: 2.16e12, pe: 65.8, revenue: 60.9e9, netMargin: 55.6, growth: 122.0 },
-    { ticker: "AMD", name: "AMD Inc.", marketCap: 245e9, pe: 45.2, revenue: 22.7e9, netMargin: 4.2, growth: 6.8 },
-    { ticker: "INTC", name: "Intel Corp.", marketCap: 108e9, pe: -15.2, revenue: 54.2e9, netMargin: -2.1, growth: -14.5 },
-  ],
-};
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { EarningsReport, PeerData, SentimentResult } from "@shared/schema";
 
 export default function Dashboard() {
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-  const [peers, setPeers] = useState<typeof mockPeerData.AAPL>([]);
+  const [peers, setPeers] = useState<PeerData[]>([]);
+  const [transcriptSentiment, setTranscriptSentiment] = useState<SentimentResult | null>(null);
   const { toast } = useToast();
 
-  // todo: remove mock functionality - simulate data loading
-  const handleSearch = (ticker: string) => {
-    setIsLoading(true);
-    setActiveTab("overview");
-    
-    setTimeout(() => {
-      const data = mockCompanyData[ticker as keyof typeof mockCompanyData];
-      if (data) {
-        setSelectedTicker(ticker);
-        setPeers(mockPeerData[ticker as keyof typeof mockPeerData] || []);
+  const { data: reportData, isLoading, error, refetch } = useQuery<{ success: boolean; data: EarningsReport }>({
+    queryKey: ["/api/analyze", selectedTicker],
+    enabled: !!selectedTicker,
+  });
+
+  const peerMutation = useMutation({
+    mutationFn: async (ticker: string) => {
+      const response = await apiRequest("POST", "/api/peers", { tickers: [ticker] });
+      return response.json();
+    },
+    onSuccess: (result) => {
+      if (result.success && result.data.length > 0) {
+        const newPeer = result.data[0];
+        if (!peers.find(p => p.ticker === newPeer.ticker)) {
+          setPeers([...peers, newPeer]);
+        }
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to fetch peer data",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const transcriptMutation = useMutation({
+    mutationFn: async (text: string) => {
+      const response = await apiRequest("POST", "/api/transcript/analyze", { text });
+      return response.json();
+    },
+    onSuccess: (result) => {
+      if (result.success) {
+        setTranscriptSentiment(result.data.sentiment);
         toast({
           title: "Analysis Complete",
-          description: `Loaded earnings data for ${data.companyName}`,
-        });
-      } else {
-        toast({
-          title: "Ticker Not Found",
-          description: `No data available for ${ticker}. Try AAPL, MSFT, or NVDA.`,
-          variant: "destructive",
+          description: "Transcript sentiment analysis completed.",
         });
       }
-      setIsLoading(false);
-    }, 1200);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to analyze transcript",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSearch = async (ticker: string) => {
+    setSelectedTicker(ticker);
+    setActiveTab("overview");
+    setTranscriptSentiment(null);
+    setPeers([]);
+    
+    try {
+      const peerResponse = await apiRequest("POST", "/api/peers", { tickers: [ticker] });
+      const peerResult = await peerResponse.json();
+      if (peerResult.success && peerResult.data.length > 0) {
+        setPeers(peerResult.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch initial peer data:", err);
+    }
   };
 
   const handleRefresh = () => {
     if (selectedTicker) {
-      handleSearch(selectedTicker);
+      refetch();
+      toast({
+        title: "Refreshing",
+        description: "Fetching latest data...",
+      });
     }
   };
 
   const handleExport = () => {
-    if (selectedTicker && data) {
-      const exportData = JSON.stringify(data, null, 2);
+    if (reportData?.data) {
+      const exportData = JSON.stringify(reportData.data, null, 2);
       const blob = new Blob([exportData], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -284,17 +122,7 @@ export default function Dashboard() {
 
   const handleAddPeer = (ticker: string) => {
     if (!peers.find(p => p.ticker === ticker)) {
-      // todo: remove mock functionality
-      const newPeer = {
-        ticker,
-        name: `${ticker} Corp.`,
-        marketCap: Math.random() * 500e9 + 50e9,
-        pe: Math.random() * 40 + 10,
-        revenue: Math.random() * 100e9 + 10e9,
-        netMargin: Math.random() * 30 + 5,
-        growth: Math.random() * 30 - 10,
-      };
-      setPeers([...peers, newPeer]);
+      peerMutation.mutate(ticker);
     }
   };
 
@@ -303,16 +131,19 @@ export default function Dashboard() {
   };
 
   const handleAnalyzeTranscript = (text: string) => {
-    console.log("Analyzing transcript:", text.substring(0, 100));
-    toast({
-      title: "Analysis Started",
-      description: "Processing transcript for sentiment analysis...",
-    });
+    transcriptMutation.mutate(text);
   };
 
-  const data = selectedTicker 
-    ? mockCompanyData[selectedTicker as keyof typeof mockCompanyData] 
-    : null;
+  const report = reportData?.data;
+
+  const formatRevenueValue = (value: number) => {
+    if (value >= 1e12) return (value / 1e12).toFixed(2) + "T";
+    if (value >= 1e9) return (value / 1e9).toFixed(2) + "B";
+    if (value >= 1e6) return (value / 1e6).toFixed(2) + "M";
+    return value.toLocaleString();
+  };
+
+  const currentSentiment = transcriptSentiment || (report?.sentiment ? report.sentiment : null);
 
   return (
     <div className="min-h-screen bg-background">
@@ -334,17 +165,24 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-4 py-6">
         {isLoading ? (
           <LoadingSkeleton />
-        ) : data ? (
+        ) : error ? (
+          <div className="text-center py-16">
+            <h2 className="text-xl font-semibold mb-2 text-destructive">Error Loading Data</h2>
+            <p className="text-muted-foreground mb-4">
+              {error instanceof Error ? error.message : "Failed to fetch stock data. Please try another ticker."}
+            </p>
+          </div>
+        ) : report ? (
           <div className="space-y-6">
             <CompanyHeader
-              ticker={data.ticker}
-              companyName={data.companyName}
-              sector={data.sector}
-              industry={data.industry}
-              currentPrice={data.currentPrice}
-              priceChange={data.priceChange}
-              priceChangePercent={data.priceChangePercent}
-              marketCap={data.marketCap}
+              ticker={report.stockInfo.ticker}
+              companyName={report.stockInfo.companyName}
+              sector={report.stockInfo.sector || undefined}
+              industry={report.stockInfo.industry || undefined}
+              currentPrice={report.stockInfo.currentPrice}
+              priceChange={report.stockInfo.priceChange}
+              priceChangePercent={report.stockInfo.priceChangePercent}
+              marketCap={report.stockInfo.marketCap}
               onRefresh={handleRefresh}
               onExport={handleExport}
               isLoading={isLoading}
@@ -362,95 +200,109 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <MetricCard
                     title="Revenue"
-                    value={data.metrics.revenue.value}
+                    value={formatRevenueValue(report.metrics.revenue)}
                     prefix="$"
-                    change={data.metrics.revenue.change}
+                    change={report.metrics.yoyRevenueGrowth ?? undefined}
                     changeLabel="YoY"
-                    trend={data.metrics.revenue.change >= 0 ? "up" : "down"}
+                    trend={report.metrics.yoyRevenueGrowth !== null 
+                      ? (report.metrics.yoyRevenueGrowth >= 0 ? "up" : "down") 
+                      : "neutral"}
                   />
                   <MetricCard
                     title="EPS"
-                    value={data.metrics.eps.value}
+                    value={report.metrics.eps.toFixed(2)}
                     prefix="$"
-                    change={data.metrics.eps.change}
+                    change={report.earningsHistory[0]?.surprise ?? undefined}
                     changeLabel="vs Est"
-                    trend={data.metrics.eps.change >= 0 ? "up" : "down"}
-                    beat={data.metrics.eps.beat}
+                    trend={report.metrics.beatEps === true ? "up" : report.metrics.beatEps === false ? "down" : "neutral"}
+                    beat={report.metrics.beatEps}
                   />
                   <MetricCard
                     title="Gross Margin"
-                    value={data.metrics.grossMargin.value}
+                    value={report.margins.gross.toFixed(1)}
                     suffix="%"
-                    change={data.metrics.grossMargin.change}
-                    changeLabel="YoY"
-                    trend={data.metrics.grossMargin.change >= 0 ? "up" : "down"}
+                    trend="neutral"
                   />
                   <MetricCard
                     title="Net Margin"
-                    value={data.metrics.netMargin.value}
+                    value={report.margins.net.toFixed(1)}
                     suffix="%"
-                    change={data.metrics.netMargin.change}
-                    changeLabel="YoY"
-                    trend={data.metrics.netMargin.change >= 0 ? "up" : "down"}
+                    trend={report.margins.net > 15 ? "up" : report.margins.net < 0 ? "down" : "neutral"}
                   />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2">
-                    <RevenueChart data={data.revenueHistory} />
+                    <RevenueChart data={report.revenueHistory} />
                   </div>
                   <div>
-                    <KeyHighlights highlights={data.highlights} />
+                    <KeyHighlights highlights={report.highlights} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <SentimentGauge
-                    score={data.sentiment.score}
-                    label={data.sentiment.label}
-                    positive={data.sentiment.positive}
-                    negative={data.sentiment.negative}
-                    neutral={data.sentiment.neutral}
-                  />
-                  <GuidanceCard guidance={data.guidance} quarter="Next Quarter" />
+                  {currentSentiment ? (
+                    <SentimentGauge
+                      score={currentSentiment.overallScore}
+                      label={currentSentiment.overallLabel}
+                      positive={currentSentiment.positive}
+                      negative={currentSentiment.negative}
+                      neutral={currentSentiment.neutral}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center bg-card rounded-lg border border-card-border p-8">
+                      <p className="text-muted-foreground text-center">
+                        Paste an earnings call transcript in the Sentiment tab to analyze management tone and key signals.
+                      </p>
+                    </div>
+                  )}
+                  <GuidanceCard guidance={report.guidance} quarter="Next Quarter (Projected)" />
                 </div>
               </TabsContent>
 
               <TabsContent value="financials" className="mt-6 space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <RevenueChart data={data.revenueHistory} title="Revenue & Net Income Trend" />
+                  <RevenueChart data={report.revenueHistory} title="Revenue & Net Income Trend" />
                   <MarginChart
-                    grossMargin={data.margins.gross}
-                    operatingMargin={data.margins.operating}
-                    netMargin={data.margins.net}
+                    grossMargin={report.margins.gross}
+                    operatingMargin={report.margins.operating}
+                    netMargin={report.margins.net}
                   />
                 </div>
-                <EarningsTable data={data.earningsHistory} />
+                <EarningsTable data={report.earningsHistory} />
               </TabsContent>
 
               <TabsContent value="sentiment" className="mt-6 space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <SentimentGauge
-                    score={data.sentiment.score}
-                    label={data.sentiment.label}
-                    positive={data.sentiment.positive}
-                    negative={data.sentiment.negative}
-                    neutral={data.sentiment.neutral}
-                  />
-                  <KeyHighlights highlights={data.highlights} />
+                  {currentSentiment ? (
+                    <SentimentGauge
+                      score={currentSentiment.overallScore}
+                      label={currentSentiment.overallLabel}
+                      positive={currentSentiment.positive}
+                      negative={currentSentiment.negative}
+                      neutral={currentSentiment.neutral}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center bg-card rounded-lg border border-card-border p-8">
+                      <p className="text-muted-foreground text-center">
+                        No sentiment analysis available yet. Paste a transcript below to analyze.
+                      </p>
+                    </div>
+                  )}
+                  <KeyHighlights highlights={report.highlights} />
                 </div>
                 <TranscriptAnalysis
-                  transcript={data.transcriptAnalysis.transcript}
-                  keyPhrases={data.transcriptAnalysis.keyPhrases}
-                  positiveSignals={data.transcriptAnalysis.positiveSignals}
-                  riskFactors={data.transcriptAnalysis.riskFactors}
+                  transcript=""
+                  keyPhrases={currentSentiment?.keyPhrases || []}
+                  positiveSignals={currentSentiment?.positiveSignals || []}
+                  riskFactors={currentSentiment?.riskFactors || []}
                   onAnalyze={handleAnalyzeTranscript}
                 />
               </TabsContent>
 
               <TabsContent value="peers" className="mt-6 space-y-6">
                 <PeerComparison
-                  targetTicker={data.ticker}
+                  targetTicker={report.stockInfo.ticker}
                   peers={peers}
                   onAddPeer={handleAddPeer}
                   onRemovePeer={handleRemovePeer}
@@ -465,7 +317,7 @@ export default function Dashboard() {
 
       <footer className="border-t border-border mt-12">
         <div className="max-w-7xl mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
-          Earnings Bot - Stock Analysis Dashboard. Data is for demonstration purposes only.
+          Earnings Bot - Stock Analysis Dashboard. Data provided by Yahoo Finance.
         </div>
       </footer>
     </div>
