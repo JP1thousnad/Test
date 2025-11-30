@@ -13,7 +13,7 @@ COPY components.json ./
 COPY drizzle.config.ts ./
 
 # Install all dependencies (including devDependencies for build)
-RUN npm ci
+RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY server ./server
@@ -33,7 +33,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install only production dependencies
-RUN npm ci --only=production
+RUN npm install --omit=dev --legacy-peer-deps
 
 # Copy built artifacts from builder
 COPY --from=builder /app/dist ./dist
